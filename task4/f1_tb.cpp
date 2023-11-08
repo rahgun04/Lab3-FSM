@@ -1,6 +1,6 @@
 #include "verilated.h"
 #include "verilated_vcd_c.h"
-#include "Vclktick.h"
+#include "Vtop.h"
 #include <chrono>
 
 #include "vbuddy.cpp"     // include vbuddy code
@@ -18,24 +18,26 @@ int main(int argc, char **argv, char **env) {
 
   Verilated::commandArgs(argc, argv);
   // init top verilog instance
-  Vclktick * top = new Vclktick;
+  Vtop * top = new Vtop;
   // init trace dump
   Verilated::traceEverOn(true);
   VerilatedVcdC* tfp = new VerilatedVcdC;
   top->trace (tfp, 99);
-  tfp->open ("clktick.vcd");
+  tfp->open ("f1_full.vcd");
  
   // init Vbuddy
   if (vbdOpen()!=1) return(-1);
-  vbdHeader("L3T2:Clktick");
+  vbdHeader("L3T3:F1Basic");
   vbdSetMode(1);        // Flag mode set to one-shot
 
   // initialize simulation inputs
   top->clk = 1;
   top->rst = 0;
-  top->en = 0;
+  top->en = 1;
   top->N = vbdValue();
-  
+  vbdSetMode(1); 
+  bool timeFlag = 0;
+  int lastVal = 0;
   // run simulation for MAX_SIM_CYC clock cycles
   for (simcyc=0; simcyc<MAX_SIM_CYC; simcyc++) {
     // dump variables into VCD file and toggle clock
@@ -45,21 +47,26 @@ int main(int argc, char **argv, char **env) {
       top->eval ();
     }
 
-    // Display toggle neopixel
-    if (top->tick) {
-      vbdBar(lights);
-      lights = lights ^ 0xFF;
-    }
+
     // set up input signals of testbench
     top->rst = (simcyc < 2);    // assert reset for 1st cycle
     top->en = (simcyc > 2);
+    top->trigger = vbdFlag();
     //top->N = vbdValue();
     auto now = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(now - lastTime);
     lastTime = now;
     top->N = 1000/duration.count();
-    std::cout << duration.count() << " millis(ms)"<< std::endl;
-    std::cout << top->N << " = N"<< std::endl;
+    vbdBar(top->data_out);
+    if((top->data_out == 0x00)&&(lastVal != 0x00)){
+      std::cout << "trigd" <<std::endl;
+      vbdInitWatch();
+    }
+    std::cout << vbdElapsed() << std::endl;
+    lastVal = top->data_out;
+    
+    //std::cout << duration.count() << " millis(ms)"<< std::endl;
+    //std::cout << top->N << " = N"<< std::endl;
     vbdCycle(simcyc);
 
 

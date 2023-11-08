@@ -1039,7 +1039,8 @@ int vbdOpen() {
 
   // open USB port
   port_name[strlen(port_name)-1] = '\0';   // strip '\n'
-  char errorOpening = serial.openDevice(port_name, 115200);
+  char errorOpening = serial.openDevice("/dev/ttyUSB0", 115200);
+  printf("Serial Error Code: %d\n", errorOpening);
   if (errorOpening!=1) 
     printf ("\n** Error opening port: %s\n", port_name);
   else {
